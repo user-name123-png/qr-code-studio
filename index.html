@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro QR Code Studio & Scanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="logo-32.png">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="QR Studio">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', sans-serif; }
+        /* ป้องกันจอเลื่อนซ้ายขวา */
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); min-height: 100vh; padding: 20px 10px; color: #f1f5f9; overflow-x: hidden; width: 100%; }
+        
+        /* Main Navigation Tabs */
+        .main-tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; max-width: 960px; margin-left: auto; margin-right: auto; padding-top: 10px; flex-wrap: wrap; }
+        .main-tab-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 12px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
+        .main-tab-btn.active { background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%); border-color: transparent; box-shadow: 0 5px 15px rgba(56, 189, 248, 0.4); }
+        .main-tab-btn:hover:not(.active) { background: rgba(255, 255, 255, 0.2); }
+
+        /* Container Styles */
+        .app-container { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 35px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); width: 100%; max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 35px; margin-bottom: 40px; }
+        .scan-container { display: none; grid-template-columns: 1fr; max-width: 600px; text-align: center; }
+
+        .left-panel, .right-panel { display: flex; flex-direction: column; width: 100%; max-width: 100%; overflow: hidden; }
+        .header { margin-bottom: 25px; }
+        h1 { font-size: 26px; font-weight: 700; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+        p.subtitle { color: #94a3b8; font-size: 14px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #cbd5e1; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+
+        /* Form Inputs */
+        .input-group { margin-bottom: 20px; width: 100%; }
+        /* แก้ไข: เพิ่ม word-break เพื่อป้องกันข้อความยาวทะลุกรอบ */
+        input[type="text"], input[type="email"], select, textarea { width: 100%; padding: 14px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; font-size: 15px; color: #fff; transition: all 0.3s; outline: none; margin-bottom: 10px; word-break: break-all; }
+        textarea { resize: vertical; }
+        input:focus, select:focus, textarea:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2); }
+
+        /* Type Selector */
+        .type-selector { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .type-btn { background: rgba(15, 23, 42, 0.6); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .type-btn.active { background: #38bdf8; color: #0f172a; font-weight: 600; border-color: #38bdf8; }
+        .type-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
+        .form-group { display: none; width: 100%; }
+        .form-group.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Generator Styling Options */
+        .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; width: 100%; }
+        .color-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; width: 100%; }
+        .color-field { display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+        .color-field label { font-size: 13px; color: #94a3b8; }
+        .color-input-wrapper { display: flex; align-items: center; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 8px 12px; gap: 10px; width: 100%; }
+        input[type="color"] { -webkit-appearance: none; appearance: none; width: 32px; height: 32px; background-color: transparent; border: none; cursor: pointer; flex-shrink: 0; }
+        input[type="color"]::-webkit-color-swatch { border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+        .color-hex { font-size: 14px; text-transform: uppercase; width: 100%; background: transparent; border: none; color: white; outline: none; }
+        
+        /* Logo Upload */
+        .file-upload-wrapper { position: relative; margin-bottom: 15px; width: 100%; }
+        .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; }
+        .file-upload-btn:hover { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
+        #logo-input, #qr-input-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        #logo-settings { display: none; background: rgba(15, 23, 42, 0.3); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 20px; width: 100%; }
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2); border-radius: 5px; outline: none; margin-top: 8px; margin-bottom: 5px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #38bdf8; cursor: pointer; }
+
+        /* Preview & Download Buttons */
+        .right-panel { align-items: center; background: rgba(15, 23, 42, 0.4); border-radius: 20px; padding: 30px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .preview-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; justify-content: center; margin-bottom: 25px; width: 100%; overflow: hidden; }
+        #canvas-container { max-width: 100%; display: flex; justify-content: center; }
+        #canvas-container svg { max-width: 100%; height: auto; }
+        .action-buttons { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; transition: 0.2s; word-break: break-word; }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+        .btn-outline { background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #cbd5e1; padding: 10px; font-size: 14px; }
+        .btn-outline:hover { background: rgba(255, 255, 255, 0.05); color: white; border-color: rgba(255, 255, 255, 0.4); }
+        .btn-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 13px; padding: 8px 12px; }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+        .download-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+
+        /* Scanner Specific Styles (แก้ไขเพื่อแก้ปัญหาเลยขอบ) */
+        #reader { width: 100% !important; border-radius: 16px; overflow: hidden; border: 2px solid rgba(56, 189, 248, 0.3) !important; background: #000; margin-bottom: 20px; display: none; }
+        /* บังคับให้วิดีโอหรือรูปที่เรนเดอร์ในกรอบกล้อง ไม่ทะลุกรอบออกมา */
+        #reader video, #reader canvas, #reader img { max-width: 100% !important; height: auto !important; border-radius: 14px; }
+        
+        #scan-result-box { margin-top: 20px; padding: 20px; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: 12px; display: none; word-break: break-all; width: 100%; }
+        .btn-camera { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); color: white; }
+
+        @media (max-width: 768px) {
+            .app-container { grid-template-columns: 1fr; gap: 25px; padding: 20px 15px; }
+            .style-grid, .color-pickers { grid-template-columns: 1fr; }
+            .main-tabs { flex-direction: column; padding: 0; }
+            .right-panel { padding: 20px 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-tabs">
+        <button class="main-tab-btn active" id="tab-gen" onclick="switchMainView('gen')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> สร้าง QR Code
+        </button>
+        <button class="main-tab-btn" id="tab-scan" onclick="switchMainView('scan')">
+            <i class="fa-solid fa-camera-retro"></i> สแกน QR Code
+        </button>
+    </div>
+
+    <div class="app-container" id="view-generate">
+        <div class="left-panel">
+            <div class="header">
+                <h1><i class="fa-solid fa-qrcode"></i> QR Studio</h1>
+                <p class="subtitle">สร้างและตกแต่ง QR Code ของคุณให้สวยงาม</p>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-layer-group"></i> เลือกประเภทข้อมูล</div>
+            <div class="type-selector">
+                <button class="type-btn active" onclick="switchDataType('url', this)"><i class="fa-solid fa-link"></i> URL/ลิงก์</button>
+                <button class="type-btn" onclick="switchDataType('text', this)"><i class="fa-solid fa-font"></i> ข้อความ</button>
+                <button class="type-btn" onclick="switchDataType('wifi', this)"><i class="fa-solid fa-wifi"></i> WiFi</button>
+                <button class="type-btn" onclick="switchDataType('vcard', this)"><i class="fa-solid fa-address-card"></i> นามบัตร</button>
+                <button class="type-btn" onclick="switchDataType('sms', this)"><i class="fa-solid fa-comment-sms"></i> SMS</button>
+            </div>
+
+            <div id="form-url" class="form-group active">
+                <input type="text" id="val-url" placeholder="กรอก URL (เช่น https://google.com)" oninput="generateQR()">
+            </div>
+            <div id="form-text" class="form-group">
+                <textarea id="val-text" rows="3" placeholder="พิมพ์ข้อความ หรือรหัส PromptPay ที่นี่..." oninput="generateQR()"></textarea>
+            </div>
+            <div id="form-wifi" class="form-group">
+                <input type="text" id="val-wifi-ssid" placeholder="ชื่อ WiFi (SSID)" oninput="generateQR()">
+                <input type="text" id="val-wifi-pass" placeholder="รหัสผ่าน WiFi" oninput="generateQR()">
+                <select id="val-wifi-type" onchange="generateQR()">
+                    <option value="WPA">WPA/WPA2</option>
+                    <option value="WEP">WEP</option>
+                    <option value="nopass">ไม่มีรหัสผ่าน</option>
+                </select>
+            </div>
+            <div id="form-vcard" class="form-group">
+                <input type="text" id="val-vcard-name" placeholder="ชื่อ - นามสกุล" oninput="generateQR()">
+                <input type="text" id="val-vcard-phone" placeholder="เบอร์โทรศัพท์" oninput="generateQR()">
+                <input type="email" id="val-vcard-email" placeholder="อีเมล" oninput="generateQR()">
+            </div>
+            <div id="form-sms" class="form-group">
+                <input type="text" id="val-sms-phone" placeholder="เบอร์ผู้รับ" oninput="generateQR()">
+                <textarea id="val-sms-msg" rows="2" placeholder="ข้อความ..." oninput="generateQR()"></textarea>
+            </div>
+
+            <div class="style-grid">
+                <div>
+                    <div class="section-title"><i class="fa-solid fa-grip"></i> รูปแบบจุด</div>
+                    <select id="dots-type" onchange="generateQR()">
+                        <option value="square">สี่เหลี่ยม</option>
+                        <option value="dots">จุดกลม</option>
+                        <option value="rounded">มุมมน</option>
+                        <option value="classy">คลาสสิกมน</option>
+                        <option value="extra-rounded">มนพิเศษ</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="section-title"><i class="fa-solid fa-expand"></i> รูปแบบมุม</div>
+                    <select id="corners-type" onchange="generateQR()">
+                        <option value="square">สี่เหลี่ยม</option>
+                        <option value="dot">วงกลม</option>
+                        <option value="rounded">มุมมน</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-palette"></i> สีสัน</div>
+            <div class="color-pickers">
+                <div class="color-field">
+                    <label>สีของ QR Code</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="color-dots" value="#000000" oninput="syncColor('color-dots', 'hex-dots')">
+                        <input type="text" id="hex-dots" value="#000000" class="color-hex" maxlength="7" onchange="syncHex('hex-dots', 'color-dots')">
+                    </div>
+                </div>
+                <div class="color-field">
+                    <label>สีพื้นหลัง</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="color-bg" value="#ffffff" oninput="syncColor('color-bg', 'hex-bg')">
+                        <input type="text" id="hex-bg" value="#FFFFFF" class="color-hex" maxlength="7" onchange="syncHex('hex-bg', 'color-bg')">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-image"></i> โลโก้ตรงกลาง</div>
+            <div class="file-upload-wrapper">
+                <div class="file-upload-btn"><i class="fa-solid fa-upload"></i> อัปโหลดโลโก้</div>
+                <input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)">
+            </div>
+            
+            <div id="logo-settings">
+                <div class="color-field">
+                    <label style="display: flex; justify-content: space-between;">
+                        <span>ขนาดโลโก้</span><span id="logo-size-val" style="color: #38bdf8;">40%</span>
+                    </label>
+                    <input type="range" id="logo-size" min="0.1" max="0.6" step="0.05" value="0.4" oninput="generateQR()">
+                </div>
+                <button class="btn btn-danger" style="width: max-content; margin-top: 10px;" onclick="clearLogo()">
+                    <i class="fa-solid fa-trash"></i> ลบโลโก้
+                </button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="preview-container">
+                <div id="canvas-container"></div>
+            </div>
+            <div class="input-group" style="width: 100%;">
+                <input type="text" id="file-name" placeholder="ตั้งชื่อไฟล์ (เช่น my_qr)" style="text-align: center;">
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-success" onclick="downloadQR('png')"><i class="fa-solid fa-download"></i> ดาวน์โหลด PNG</button>
+                <div class="download-options">
+                    <button class="btn btn-outline" onclick="downloadQR('jpeg')">JPG</button>
+                    <button class="btn btn-outline" onclick="downloadQR('svg')">SVG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container scan-container" id="view-scan">
+        <div class="header">
+            <h1><i class="fa-solid fa-camera-viewfinder"></i> สแกน QR Code</h1>
+            <p class="subtitle">สแกนจากกล้องมือถือ หรืออัปโหลดรูปภาพเพื่ออ่านค่า</p>
+        </div>
+
+        <div id="reader"></div>
+
+        <div class="action-buttons" style="margin-bottom: 20px;">
+            <button class="btn btn-camera" id="btn-start-camera" onclick="startCamera()">
+                <i class="fa-solid fa-video"></i> เปิดกล้องเพื่อสแกน
+            </button>
+            <button class="btn btn-danger" id="btn-stop-camera" onclick="stopCamera()" style="display: none; width: 100%; justify-content: center; font-size: 16px; padding: 14px;">
+                <i class="fa-solid fa-video-slash"></i> ปิดกล้อง
+            </button>
+        </div>
+
+        <div class="file-upload-wrapper" style="margin-bottom: 0;">
+            <div class="file-upload-btn" style="border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.08);">
+                <i class="fa-regular fa-image"></i> อัปโหลดรูปภาพ QR Code เพื่ออ่านค่า
+            </div>
+            <input type="file" id="qr-input-file" accept="image/*">
+        </div>
+
+        <div id="scan-result-box">
+            <h3 style="color: #10b981; margin-bottom: 10px; font-size: 16px;"><i class="fa-solid fa-circle-check"></i> สแกนสำเร็จ!</h3>
+            <p id="scan-result-text" style="color: white; font-size: 18px; word-break: break-all; margin-bottom: 15px;"></p>
+            <button class="btn btn-success" id="btn-action-scan" style="display: none;" onclick="handleScanAction()">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดลิงก์
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* --- ระบบจัดการสลับหน้า (Tabs) --- */
+        function switchMainView(view) {
+            document.getElementById('tab-gen').classList.remove('active');
+            document.getElementById('tab-scan').classList.remove('active');
+            document.getElementById('tab-' + view).classList.add('active');
+
+            if (view === 'gen') {
+                document.getElementById('view-generate').style.display = 'grid';
+                document.getElementById('view-scan').style.display = 'none';
+                stopCamera();
+                
+                // เคลียร์ค่าหน้าสแกนเผื่อไว้
+                document.getElementById('scan-result-box').style.display = 'none';
+            } else {
+                document.getElementById('view-generate').style.display = 'none';
+                document.getElementById('view-scan').style.display = 'grid';
+                // โชว์กรอบกล้องสแตนด์บายไว้เลย เพื่อไม่ให้หน้าเพจกระตุก
+                document.getElementById('reader').style.display = 'block';
+            }
+        }
+
+        /* ==========================================
+           LOGIC: GENERATOR (สร้าง)
+           ========================================== */
+        let qrCodeStyling = new QRCodeStyling({ width: 260, height: 260, type: "svg", data: " ", imageOptions: { margin: 5 } });
+        let currentDataType = 'url';
+        let logoDataUrl = "";
+
+        window.onload = function() { qrCodeStyling.append(document.getElementById("canvas-container")); };
+
+        function switchDataType(type, btnElement) {
+            currentDataType = type;
+            document.querySelectorAll('.type-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            
+            document.querySelectorAll('.form-group').forEach(form => form.classList.remove('active'));
+            document.getElementById('form-' + type).classList.add('active');
+            generateQR();
+        }
+
+        function generateQR() {
+            let finalData = " ";
+            
+            if (currentDataType === 'url') {
+                finalData = document.getElementById('val-url').value;
+            } else if (currentDataType === 'text') {
+                finalData = document.getElementById('val-text').value;
+            } else if (currentDataType === 'wifi') {
+                let ssid = document.getElementById('val-wifi-ssid').value;
+                let pass = document.getElementById('val-wifi-pass').value;
+                let type = document.getElementById('val-wifi-type').value;
+                if(ssid) finalData = `WIFI:S:${ssid};T:${type};P:${pass};;`;
+            } else if (currentDataType === 'vcard') {
+                let name = document.getElementById('val-vcard-name').value;
+                let phone = document.getElementById('val-vcard-phone').value;
+                let email = document.getElementById('val-vcard-email').value;
+                if(name || phone) finalData = `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL:${phone}\nEMAIL:${email}\nEND:VCARD`;
+            } else if (currentDataType === 'sms') {
+                let phone = document.getElementById('val-sms-phone').value;
+                let msg = document.getElementById('val-sms-msg').value;
+                if(phone) finalData = `smsto:${phone}:${msg}`;
+            }
+
+            if (!finalData.trim()) finalData = " "; 
+
+            const logoSize = parseFloat(document.getElementById("logo-size").value);
+            document.getElementById("logo-size-val").innerText = Math.round(logoSize * 100) + "%";
+
+            qrCodeStyling.update({
+                data: finalData,
+                image: logoDataUrl,
+                dotsOptions: {
+                    color: document.getElementById("color-dots").value,
+                    type: document.getElementById("dots-type").value
+                },
+                backgroundOptions: { color: document.getElementById("color-bg").value },
+                imageOptions: { crossOrigin: "anonymous", hideBackgroundDots: true, imageSize: logoSize, margin: 5 },
+                cornersSquareOptions: { type: document.getElementById("corners-type").value, color: document.getElementById("color-dots").value },
+                cornersDotOptions: { type: document.getElementById("corners-type").value === 'square' ? 'square' : 'dot', color: document.getElementById("color-dots").value }
+            });
+        }
+
+        function syncColor(pickerId, textId) {
+            document.getElementById(textId).value = document.getElementById(pickerId).value.toUpperCase();
+            generateQR();
+        }
+        function syncHex(textId, pickerId) {
+            let val = document.getElementById(textId).value;
+            if(/^#[0-9A-F]{6}$/i.test(val)) { document.getElementById(pickerId).value = val; generateQR(); }
+        }
+
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logoDataUrl = e.target.result;
+                    document.getElementById("logo-settings").style.display = "block";
+                    generateQR();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        function clearLogo() {
+            logoDataUrl = "";
+            document.getElementById("logo-input").value = "";
+            document.getElementById("logo-settings").style.display = "none";
+            document.getElementById("logo-size").value = 0.4;
+            generateQR();
+        }
+
+        function downloadQR(extension) {
+            let name = document.getElementById("file-name").value.trim() || "qr_studio";
+            qrCodeStyling.download({ name: name, extension: extension });
+        }
+
+
+        /* ==========================================
+           LOGIC: SCANNER (สแกน)
+           ========================================== */
+        let html5QrCode;
+        let lastScanResult = "";
+
+        function onScanSuccess(decodedText, decodedResult) {
+            stopCamera();
+            lastScanResult = decodedText;
+            
+            document.getElementById('scan-result-box').style.display = 'block';
+            document.getElementById('scan-result-text').innerText = decodedText;
+            
+            let btnAction = document.getElementById('btn-action-scan');
+            if (/^(http|https):\/\/[^ "]+$/.test(decodedText)) {
+                btnAction.style.display = 'inline-flex';
+                btnAction.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดลิงก์';
+                window.location.href = decodedText; 
+            } else {
+                btnAction.style.display = 'inline-flex';
+                btnAction.innerHTML = '<i class="fa-solid fa-copy"></i> คัดลอกข้อความ';
+            }
+        }
+
+        function handleScanAction() {
+            if (/^(http|https):\/\/[^ "]+$/.test(lastScanResult)) {
+                window.open(lastScanResult, '_blank');
+            } else {
+                navigator.clipboard.writeText(lastScanResult);
+                alert("คัดลอกข้อความแล้ว!");
+            }
+        }
+
+        function startCamera() {
+            document.getElementById('scan-result-box').style.display = 'none';
+            document.getElementById('reader').style.display = 'block'; // แสดงกรอบกล้อง
+            
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+            
+            document.getElementById('btn-start-camera').style.display = 'none';
+            document.getElementById('btn-stop-camera').style.display = 'inline-flex';
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess
+            ).catch(err => {
+                alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การเข้าถึงกล้องครับ");
+                stopCamera();
+            });
+        }
+
+        function stopCamera() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('btn-start-camera').style.display = 'inline-flex';
+                    document.getElementById('btn-stop-camera').style.display = 'none';
+                    // ไม่ต้องซ่อน #reader จะได้ไม่กระตุกตอนเริ่มใหม่
+                }).catch(err => console.log(err));
+            } else {
+                document.getElementById('btn-start-camera').style.display = 'inline-flex';
+                document.getElementById('btn-stop-camera').style.display = 'none';
+            }
+        }
+
+        // ระบบสแกนจากไฟล์รูปภาพ
+        document.getElementById('qr-input-file').addEventListener('change', e => {
+            if (e.target.files.length == 0) return;
+            
+            document.getElementById('scan-result-box').style.display = 'none';
+            stopCamera(); 
+            
+            const imageFile = e.target.files[0];
+            
+            // ต้องให้ #reader แสดงอยู่ ระบบถึงจะย่อภาพและแสกนได้อย่างถูกต้อง
+            document.getElementById('reader').style.display = 'block';
+
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+            
+            // เปลี่ยนจาก false เป็น true เพื่อให้ไลบรารีช่วยเรนเดอร์ภาพลง Canvas แก้ปัญหาภาพความละเอียดสูงสแกนไม่ติด
+            html5QrCode.scanFile(imageFile, true)
+                .then(decodedText => {
+                    onScanSuccess(decodedText, null);
+                })
+                .catch(err => {
+                    alert("สแกนไม่สำเร็จ: หากรูปมีความละเอียดสูงเกินไป หรือจุดเล็กมาก (เช่น PromptPay) ลองครอป (Crop) ให้เหลือแค่กรอบสี่เหลี่ยม QR Code ก่อนอัปโหลดดูนะครับ!");
+                    // เคลียร์รูปภาพออกถอดใจแสกนไม่ติด
+                    if(html5QrCode) html5QrCode.clear();
+                });
+        });
+
+    </script>
+</body>
+</html>

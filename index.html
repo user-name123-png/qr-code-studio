@@ -61,7 +61,7 @@
         .file-upload-wrapper { position: relative; margin-bottom: 15px; width: 100%; }
         .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; }
         .file-upload-btn:hover { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
-        #logo-input, #qr-input-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        #logo-input, #qr-input-file, #upload-image-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
         #logo-settings { display: none; background: rgba(15, 23, 42, 0.3); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 20px; width: 100%; }
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2); border-radius: 5px; outline: none; margin-top: 8px; margin-bottom: 5px; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #38bdf8; cursor: pointer; }
@@ -112,11 +112,12 @@
 
             <div class="section-title"><i class="fa-solid fa-layer-group"></i> เลือกประเภทข้อมูล</div>
             <div class="type-selector">
-                <button class="type-btn active" onclick="switchDataType('url', this)"><i class="fa-solid fa-link"></i> URL/ลิงก์</button>
+                <button class="type-btn active" onclick="switchDataType('url', this)"><i class="fa-solid fa-link"></i> ลิงก์</button>
                 <button class="type-btn" onclick="switchDataType('text', this)"><i class="fa-solid fa-font"></i> ข้อความ</button>
                 <button class="type-btn" onclick="switchDataType('wifi', this)"><i class="fa-solid fa-wifi"></i> WiFi</button>
                 <button class="type-btn" onclick="switchDataType('vcard', this)"><i class="fa-solid fa-address-card"></i> นามบัตร</button>
                 <button class="type-btn" onclick="switchDataType('sms', this)"><i class="fa-solid fa-comment-sms"></i> SMS</button>
+                <button class="type-btn" onclick="switchDataType('image', this)" style="border-color: #f59e0b; color: #f59e0b;"><i class="fa-regular fa-image"></i> รูปภาพ (Cloud)</button>
             </div>
 
             <div id="form-url" class="form-group active">
@@ -142,6 +143,17 @@
             <div id="form-sms" class="form-group">
                 <input type="text" id="val-sms-phone" placeholder="เบอร์ผู้รับ" oninput="generateQR()">
                 <textarea id="val-sms-msg" rows="2" placeholder="ข้อความ..." oninput="generateQR()"></textarea>
+            </div>
+            
+            <div id="form-image" class="form-group">
+                <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px;"><i class="fa-solid fa-circle-info"></i> ระบบจะอัปโหลดรูปขึ้น Cloud และสร้างเป็นลิงก์ให้สแกนอัตโนมัติ</p>
+                <div class="file-upload-wrapper">
+                    <div class="file-upload-btn" id="img-upload-btn" style="border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> คลิกเพื่อเลือกรูปภาพของคุณ
+                    </div>
+                    <input type="file" id="upload-image-file" accept="image/*" onchange="uploadImageToCloud(event)">
+                </div>
+                <input type="text" id="val-image-url" placeholder="รออัปโหลด... ลิงก์จะปรากฏที่นี่" readonly style="color: #38bdf8; background: rgba(15, 23, 42, 0.8);">
             </div>
 
             <div class="style-grid">
@@ -291,6 +303,45 @@
             generateQR();
         }
 
+        // --- ระบบอัปโหลดรูปภาพขึ้น Cloud (ImgBB API) ---
+        async function uploadImageToCloud(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const btn = document.getElementById('img-upload-btn');
+            const urlInput = document.getElementById('val-image-url');
+
+            // เปลี่ยนหน้าตาปุ่มเพื่อบอกสถานะว่ากำลังโหลด
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปโหลด...';
+            btn.style.opacity = '0.7';
+            urlInput.value = ''; // ล้างช่องเก่า
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                // ใช้ ImgBB API (Free Public Demo Key สำหรับการทำโปรเจกต์)
+                const res = await fetch('https://api.imgbb.com/1/upload?key=6c43491950e3d23190ab7aab53ff0c0a', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    urlInput.value = data.data.url; // เอาลิงก์รูปมาใส่ช่อง
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> อัปโหลดสำเร็จ! (เปลี่ยนรูปคลิกที่นี่)';
+                    btn.style.opacity = '1';
+                    generateQR(); // สั่งสร้าง QR Code อัตโนมัติ
+                } else {
+                    throw new Error('Upload failed');
+                }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ ลองตรวจสอบขนาดไฟล์อินเทอร์เน็ตดูนะครับ');
+                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> เลือกรูปภาพที่ต้องการแชร์';
+                btn.style.opacity = '1';
+            }
+        }
+
         function generateQR() {
             let finalData = " ";
             
@@ -312,16 +363,15 @@
                 let phone = document.getElementById('val-sms-phone').value;
                 let msg = document.getElementById('val-sms-msg').value;
                 if(phone) finalData = `smsto:${phone}:${msg}`;
+            } else if (currentDataType === 'image') {
+                // ดึงลิงก์จากช่องรูปภาพ
+                finalData = document.getElementById('val-image-url').value;
             }
 
             if (!finalData.trim()) finalData = " "; 
 
-            // -------------------------------------------------------------
-            // การแก้ไขปัญหาภาษาไทยและภาษาอื่นๆ (เข้ารหัส UTF-8 Byte String)
-            // -------------------------------------------------------------
             let utf8Data = finalData;
             try {
-                // แปลงเป็น Byte Encoding เพื่อให้ QR Code วาดข้อมูลภาษาไทยได้ถูกต้อง
                 utf8Data = unescape(encodeURIComponent(finalData));
             } catch (e) {
                 console.warn("Encoding failed:", e);
@@ -331,7 +381,7 @@
             document.getElementById("logo-size-val").innerText = Math.round(logoSize * 100) + "%";
 
             qrCodeStyling.update({
-                data: utf8Data,  // นำข้อมูลที่ผ่านการแปลง UTF-8 ไปใช้งาน
+                data: utf8Data,
                 image: logoDataUrl,
                 dotsOptions: { color: document.getElementById("color-dots").value, type: document.getElementById("dots-type").value },
                 backgroundOptions: { color: document.getElementById("color-bg").value },

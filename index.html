@@ -59,9 +59,9 @@
         .color-hex { font-size: 14px; text-transform: uppercase; width: 100%; background: transparent; border: none; color: white; outline: none; }
         
         .file-upload-wrapper { position: relative; margin-bottom: 15px; width: 100%; }
-        .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; text-align: center; }
+        .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; }
         .file-upload-btn:hover { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
-        #logo-input, #qr-input-file, #val-image-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        #logo-input, #qr-input-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
         #logo-settings { display: none; background: rgba(15, 23, 42, 0.3); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 20px; width: 100%; }
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2); border-radius: 5px; outline: none; margin-top: 8px; margin-bottom: 5px; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #38bdf8; cursor: pointer; }
@@ -114,7 +114,6 @@
             <div class="type-selector">
                 <button class="type-btn active" onclick="switchDataType('url', this)"><i class="fa-solid fa-link"></i> URL/ลิงก์</button>
                 <button class="type-btn" onclick="switchDataType('text', this)"><i class="fa-solid fa-font"></i> ข้อความ</button>
-                <button class="type-btn" onclick="switchDataType('image', this)"><i class="fa-regular fa-image"></i> แปลงรูปเป็น QR</button>
                 <button class="type-btn" onclick="switchDataType('wifi', this)"><i class="fa-solid fa-wifi"></i> WiFi</button>
                 <button class="type-btn" onclick="switchDataType('vcard', this)"><i class="fa-solid fa-address-card"></i> นามบัตร</button>
                 <button class="type-btn" onclick="switchDataType('sms', this)"><i class="fa-solid fa-comment-sms"></i> SMS</button>
@@ -123,20 +122,9 @@
             <div id="form-url" class="form-group active">
                 <input type="text" id="val-url" placeholder="กรอก URL (เช่น https://google.com)" oninput="generateQR()">
             </div>
-            
             <div id="form-text" class="form-group">
                 <textarea id="val-text" rows="3" placeholder="พิมพ์ข้อความภาษาไทย หรือภาษาอื่นๆ ที่นี่..." oninput="generateQR()"></textarea>
             </div>
-
-            <div id="form-image" class="form-group">
-                <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px;">ระบบจะทำการอัปโหลดรูปภาพขึ้น Cloud อัตโนมัติและแปลงเป็นลิงก์เพื่อสร้าง QR Code</p>
-                <div class="file-upload-wrapper">
-                    <div class="file-upload-btn" id="upload-image-btn"><i class="fa-solid fa-cloud-arrow-up"></i> คลิกเพื่อเลือกรูปภาพที่ต้องการแชร์</div>
-                    <input type="file" id="val-image-file" accept="image/*" onchange="uploadImageToCloud(event)">
-                </div>
-                <input type="text" id="val-image-url" placeholder="ลิงก์รูปภาพจะปรากฏที่นี่เมื่ออัปโหลดเสร็จ..." readonly style="background: rgba(0,0,0,0.2); color: #38bdf8;">
-            </div>
-
             <div id="form-wifi" class="form-group">
                 <input type="text" id="val-wifi-ssid" placeholder="ชื่อ WiFi (SSID)" oninput="generateQR()">
                 <input type="text" id="val-wifi-pass" placeholder="รหัสผ่าน WiFi" oninput="generateQR()">
@@ -303,70 +291,6 @@
             generateQR();
         }
 
-        // --- ระบบอัปโหลดรูปภาพเพื่อเปลี่ยนเป็นลิงก์อัตโนมัติ (แก้ไขบั๊กมือถือและแอป LINE) ---
-        async function uploadImageToCloud(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (file.size > 5 * 1024 * 1024) {
-                alert("ไฟล์รูปใหญ่เกินไปครับ (จำกัด 5MB) กรุณาลดขนาดภาพก่อนอัปโหลด!");
-                return;
-            }
-
-            const uploadBtn = document.getElementById('upload-image-btn');
-            const urlInput = document.getElementById('val-image-url');
-            
-            uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังแปลงไฟล์และอัปโหลด...';
-            urlInput.value = '';
-
-            // ใช้ FileReader เพื่อแปลงรูปภาพเป็นโค้ด Base64 ก่อนส่ง (แก้บั๊กเบราว์เซอร์มือถือ)
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onloadend = async function() {
-                try {
-                    // ตัดข้อความส่วนหัว (data:image/jpeg;base64,) ออกให้เหลือแต่โค้ดรูป
-                    const base64data = reader.result.split(',')[1];
-
-                    const formData = new FormData();
-                    formData.append('image', base64data);
-
-                    const apiKey = "11ca3f2bd2c64b6338bba811b71d9d92"; // ImgBB API
-
-                    // ตั้งเวลาตัดการทำงานที่ 15 วินาที
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-                        method: 'POST',
-                        body: formData,
-                        signal: controller.signal
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        urlInput.value = data.data.url;
-                        uploadBtn.innerHTML = '<i class="fa-solid fa-check"></i> อัปโหลดสำเร็จ! (คลิกเพื่อเปลี่ยนรูป)';
-                        generateQR(); // สร้าง QR Code ให้ทันที
-                    } else {
-                        throw new Error(data.error ? data.error.message : "เซิร์ฟเวอร์ปฏิเสธการรับไฟล์");
-                    }
-                } catch (error) {
-                    console.error(error);
-                    // ดักจับ Error ให้แสดงผลชัดเจนขึ้น แทนที่จะขึ้น {}
-                    let errorMsg = error.message === 'The user aborted a request.' ? 'หมดเวลาเชื่อมต่อ (เน็ตอาจจะช้า)' : error.message;
-                    alert("อัปโหลดไม่สำเร็จ: " + errorMsg + "\n\nวิธีแก้ขัด: ให้นำรูปไปฝากที่เว็บ postimages.org แล้วนำลิงก์มาวางในช่อง URL แทนครับ");
-                    uploadBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> คลิกเพื่ออัปโหลดใหม่';
-                }
-            };
-            
-            reader.onerror = function() {
-                alert("ไม่สามารถอ่านไฟล์รูปภาพนี้ได้ครับ กรุณาลองรูปอื่น");
-                uploadBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> คลิกเพื่อเลือกรูปภาพที่ต้องการแชร์';
-            };
-        }
-
         function generateQR() {
             let finalData = " ";
             
@@ -374,8 +298,6 @@
                 finalData = document.getElementById('val-url').value;
             } else if (currentDataType === 'text') {
                 finalData = document.getElementById('val-text').value;
-            } else if (currentDataType === 'image') {
-                finalData = document.getElementById('val-image-url').value; 
             } else if (currentDataType === 'wifi') {
                 let ssid = document.getElementById('val-wifi-ssid').value;
                 let pass = document.getElementById('val-wifi-pass').value;
@@ -394,8 +316,12 @@
 
             if (!finalData.trim()) finalData = " "; 
 
+            // -------------------------------------------------------------
+            // การแก้ไขปัญหาภาษาไทยและภาษาอื่นๆ (เข้ารหัส UTF-8 Byte String)
+            // -------------------------------------------------------------
             let utf8Data = finalData;
             try {
+                // แปลงเป็น Byte Encoding เพื่อให้ QR Code วาดข้อมูลภาษาไทยได้ถูกต้อง
                 utf8Data = unescape(encodeURIComponent(finalData));
             } catch (e) {
                 console.warn("Encoding failed:", e);
@@ -405,7 +331,7 @@
             document.getElementById("logo-size-val").innerText = Math.round(logoSize * 100) + "%";
 
             qrCodeStyling.update({
-                data: utf8Data,  
+                data: utf8Data,  // นำข้อมูลที่ผ่านการแปลง UTF-8 ไปใช้งาน
                 image: logoDataUrl,
                 dotsOptions: { color: document.getElementById("color-dots").value, type: document.getElementById("dots-type").value },
                 backgroundOptions: { color: document.getElementById("color-bg").value },
@@ -465,7 +391,7 @@
             let btnAction = document.getElementById('btn-action-scan');
             if (/^(http|https):\/\/[^ "]+$/.test(decodedText)) {
                 btnAction.style.display = 'inline-flex';
-                btnAction.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดลิงก์รูปภาพ';
+                btnAction.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดลิงก์';
                 window.location.href = decodedText; 
             } else {
                 btnAction.style.display = 'inline-flex';

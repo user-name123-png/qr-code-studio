@@ -59,7 +59,7 @@
         .color-hex { font-size: 14px; text-transform: uppercase; width: 100%; background: transparent; border: none; color: white; outline: none; }
         
         .file-upload-wrapper { position: relative; margin-bottom: 15px; width: 100%; }
-        .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; text-align: center; }
+        .file-upload-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; cursor: pointer; color: #38bdf8; font-size: 14px; transition: 0.3s; }
         .file-upload-btn:hover { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
         #logo-input, #qr-input-file { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
         #logo-settings { display: none; background: rgba(15, 23, 42, 0.3); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 20px; width: 100%; }
@@ -382,27 +382,24 @@
         }
 
         /* ==========================================
-           LOGIC: SCANNER (AI Interpreter & Colored QR Fix)
+           LOGIC: SCANNER (AI Interpreter)
            ========================================== */
         let qrScanner = null;
         let currentFacingMode = 'environment';
         let lastScanResult = "";
         const videoElem = document.getElementById('reader-video');
 
-        // ฟังก์ชันประมวลผลข้อมูลที่ได้จากการสแกน (Interpreter)
         function parseScanResult(text) {
             let displayHtml = "";
-            let actionHtml = `<button class="btn btn-outline" style="width: 100%; border-color: #38bdf8; color: #38bdf8;" onclick="copyToClipboard()"><i class="fa-solid fa-copy"></i> คัดลอกข้อความ</button>`;
+            let actionHtml = `<button class="btn btn-outline" style="width: 100%; border-color: #38bdf8; color: #38bdf8;" onclick="copyToClipboard()"><i class="fa-solid fa-copy"></i> คัดลอกข้อความทั้งหมด</button>`;
 
             if (/^(http|https):\/\/[^ "]+$/.test(text)) {
-                // ประเภท: ลิงก์
                 displayHtml = `<strong><i class="fa-solid fa-link" style="color:#38bdf8"></i> URL / เว็บไซต์</strong><br><br><a href="${text}" target="_blank" style="color: #cbd5e1; word-break: break-all; text-decoration: underline;">${text}</a>`;
                 actionHtml = `
                     <button class="btn btn-success" style="width: 100%;" onclick="window.open(lastScanResult, '_blank')"><i class="fa-solid fa-arrow-up-right-from-square"></i> ไปที่ลิงก์</button>
                     ${actionHtml}
                 `;
             } else if (text.startsWith("WIFI:")) {
-                // ประเภท: WiFi
                 let ssid = (text.match(/S:([^;]+)/) || [])[1] || "";
                 let pass = (text.match(/P:([^;]+)/) || [])[1] || "";
                 let wtype = (text.match(/T:([^;]+)/) || [])[1] || "";
@@ -419,7 +416,6 @@
                     `;
                 }
             } else if (text.startsWith("BEGIN:VCARD")) {
-                // ประเภท: นามบัตร (vCard)
                 let name = (text.match(/FN:([^\n\r]+)/) || [])[1] || "";
                 let phone = (text.match(/TEL:([^\n\r]+)/) || [])[1] || "";
                 let email = (text.match(/EMAIL:([^\n\r]+)/) || [])[1] || "";
@@ -429,12 +425,23 @@
                                <span style="color:#94a3b8">โทรศัพท์:</span> ${phone}<br>
                                <span style="color:#94a3b8">อีเมล:</span> ${email}`;
                                
-                actionHtml = `
-                    <button class="btn btn-success" style="width: 100%;" onclick="downloadVCard('${name}')"><i class="fa-solid fa-address-book"></i> บันทึกรายชื่อลงเครื่อง</button>
-                    <button class="btn btn-outline" style="width: 100%; border-color: #cbd5e1; color: white;" onclick="copyToClipboard('${phone}')"><i class="fa-solid fa-phone"></i> คัดลอกเบอร์โทร</button>
-                `;
+                let safeName = name.replace(/'/g, "\\'");
+                let safePhone = phone.replace(/'/g, "\\'");
+                let safeEmail = email.replace(/'/g, "\\'");
+
+                actionHtml = `<button class="btn btn-success" style="width: 100%;" onclick="downloadVCard('${safeName}')"><i class="fa-solid fa-address-book"></i> บันทึกรายชื่อลงเครื่อง</button>`;
+                
+                if (name) {
+                    actionHtml += `<button class="btn btn-outline" style="width: 100%; border-color: #cbd5e1; color: white;" onclick="copyToClipboard('${safeName}')"><i class="fa-solid fa-user"></i> คัดลอกชื่อ - นามสกุล</button>`;
+                }
+                if (phone) {
+                    actionHtml += `<button class="btn btn-outline" style="width: 100%; border-color: #cbd5e1; color: white;" onclick="copyToClipboard('${safePhone}')"><i class="fa-solid fa-phone"></i> คัดลอกเบอร์โทร</button>`;
+                }
+                if (email) {
+                    actionHtml += `<button class="btn btn-outline" style="width: 100%; border-color: #cbd5e1; color: white;" onclick="copyToClipboard('${safeEmail}')"><i class="fa-solid fa-envelope"></i> คัดลอกอีเมล</button>`;
+                }
+
             } else if (text.toLowerCase().startsWith("smsto:")) {
-                // ประเภท: SMS
                 let parts = text.split(':');
                 let phone = parts[1] || "";
                 let msg = parts.slice(2).join(':') || "";
@@ -448,27 +455,23 @@
                     ${actionHtml}
                 `;
             } else {
-                // ประเภท: ข้อความทั่วไป / พร้อมเพย์
                 displayHtml = `<strong><i class="fa-solid fa-font" style="color:#38bdf8"></i> ข้อความ / ข้อมูล</strong><br><br>${text}`;
             }
 
             return { displayHtml, actionHtml };
         }
 
-        // ฟังก์ชันเมื่อสแกนสำเร็จ
         function onScanSuccess(decodedText) {
             stopCamera();
             lastScanResult = decodedText;
             
             document.getElementById('scan-result-box').style.display = 'block';
             
-            // นำผลลัพธ์ไปผ่านเครื่องแปลผล (Interpreter)
             const parsedData = parseScanResult(decodedText);
             document.getElementById('scan-result-content').innerHTML = parsedData.displayHtml;
             document.getElementById('scan-action-buttons').innerHTML = parsedData.actionHtml;
         }
 
-        // ฟังก์ชันช่วยเหลือ: คัดลอกข้อความ
         function copyToClipboard(customText) {
             const textToCopy = customText || lastScanResult;
             navigator.clipboard.writeText(textToCopy).then(() => {
@@ -478,7 +481,6 @@
             });
         }
 
-        // ฟังก์ชันช่วยเหลือ: บันทึก vCard
         function downloadVCard(fileName) {
             const blob = new Blob([lastScanResult], { type: 'text/vcard;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -502,7 +504,6 @@
                         highlightScanRegion: true,
                         highlightCodeOutline: true,
                         preferredCamera: currentFacingMode,
-                        // โค้ดสำคัญ! ทำให้สแกน QR Code ที่สีพื้นหลังสว่างกว่าจุด หรือสีแปลกๆ ได้
                         inversionMode: 'both' 
                     }
                 );
@@ -546,7 +547,6 @@
             
             const imageFile = e.target.files[0];
             
-            // อ่านรูปภาพโดยเปิดโหมด inversionMode: 'both' เพื่อรองรับทุกเฉดสี
             QrScanner.scanImage(imageFile, { returnDetailedScanResult: true, inversionMode: 'both', alsoTryWithoutScanRegion: true })
                 .then(result => {
                     onScanSuccess(result.data);
